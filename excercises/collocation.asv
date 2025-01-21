@@ -1,0 +1,78 @@
+% Define the observation times and values
+t_obs = [1;10];
+y_obs = [-3.2, -2.3, -1.3, -2.2, 1.4, 2.4, 3.2, 7.5, 1, 2.4];
+
+% Define the single grid node
+t_grid = 2;
+
+% Standard deviation of the noise
+sigma_noise = 0.5;
+
+% Covariance function
+covariance = @(tau) (tau <= 0.4) .* (1 - 2 * tau);
+
+% Initialize Cxy and Cxx
+Cxy = zeros(1, length(t_obs)); % Single row for one grid node
+Cxx = zeros(length(t_obs), length(t_obs));
+
+% Compute Cxy (covariance between the grid node and observations)
+for j = 1:length(t_obs)
+    tau = abs(t_grid - t_obs(j)); % Time distance
+    Cxy(1, j) = covariance(tau);
+end
+
+% Compute Cxx (covariance between observations)
+for i = 1:length(t_obs)
+    for j = 1:length(t_obs)
+        tau = abs(t_obs(i) - t_obs(j)); % Time distance
+        Cxx(i, j) = covariance(tau);
+    end
+end
+
+% Add noise variance to the diagonal of Cxx
+Cxx = Cxx + sigma_noise^2 * eye(length(t_obs));
+
+% Compute Yest using the formula Yest = Cxy * inv(Cxx) * Y0
+Cxx_inv = inv(Cxx);
+y_est = Cxy * Cxx_inv * y_obs';
+
+% Compute the variance of the prediction
+Cy0 = covariance(0); % Covariance at zero lag
+sigma_est_squared = Cy0 - Cxy * Cxx_inv * Cxy';
+sigma_est = sqrt(sigma_est_squared); % Standard deviation
+
+% Display formulas
+disp('-------------------------- Formulas Used --------------------------');
+disp('1. Covariance Function:');
+disp('   C_y(τ) = 1 - 2τ, for 0 ≤ τ ≤ 0.5; otherwise, C_y(τ) = 0');
+disp(' ');
+disp('2. Updated Observation Covariance Matrix:');
+disp('   Cxx = Cxx + σ^2 * I');
+disp(' ');
+disp('3. Predicted Value for t = 2:');
+disp('   Yest = Cxy * inv(Cxx) * Y0');
+disp(' ');
+disp('4. Variance of Prediction for t = 2:');
+disp('   σ^2_est = Cy(0) - Cxy * inv(Cxx) * Cxy''');
+disp('-------------------------------------------------------------------');
+
+% Display matrices and results
+disp('Covariance matrix Cxy (between t = 2 and observations):');
+disp(array2table(Cxy, 'VariableNames', strcat("Obs_", string(1:length(t_obs)))));
+
+disp('Covariance matrix Cxx (between observations, with noise variance):');
+disp(array2table(Cxx, 'VariableNames', strcat("Obs_", string(1:length(t_obs))), ...
+                      'RowNames', strcat("Obs_", string(1:length(t_obs)))));
+
+disp('Inverse of covariance matrix Cxx (Cxx^-1):');
+disp(array2table(Cxx_inv, 'VariableNames', strcat("Obs_", string(1:length(t_obs))), ...
+                          'RowNames', strcat("Obs_", string(1:length(t_obs)))));
+
+disp('Predicted value (y_est) for t = 2:');
+disp(y_est);
+
+disp('Variance of prediction (σ^2_est) for t = 2:');
+disp(sigma_est_squared);
+
+disp('Standard deviation (σ_est) for t = 2:');
+disp(sigma_est);
